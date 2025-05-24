@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  email       String   @unique
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  customers  Customer[]
+  campaigns  Campaign[]
+  qrCodes    QRCode[]
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  firstName       String
+  lastName        String?
+  email           String?
+  phone           String?
+  whatsappOptIn   Boolean  @default(false)
+  smsOptIn        Boolean  @default(false)
+  emailOptIn      Boolean  @default(false)
+  birthday        DateTime?
+  preferences     String?  // JSON string for additional preferences
+  registeredAt    DateTime @default(now())
+  lastContact     DateTime?
+  
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  campaignSends   CampaignSend[]
+  
+  @@unique([email, businessId])
+}
+
+model QRCode {
+  id          String   @id @default(cuid())
+  name        String
+  url         String   @unique
+  isActive    Boolean  @default(true)
+  scans       Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id          String      @id @default(cuid())
+  name        String
+  subject     String?
+  message     String
+  type        CampaignType
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  businessId  String
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  sends       CampaignSend[]
+}
+
+model CampaignSend {
+  id         String    @id @default(cuid())
+  status     SendStatus @default(PENDING)
+  sentAt     DateTime?
+  deliveredAt DateTime?
+  error      String?
+  
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  @@unique([campaignId, customerId])
+}
+
+enum CampaignType {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum SendStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
