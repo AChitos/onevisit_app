@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ export default function NewCampaignPage() {
   const typeParam = searchParams.get('type')
   
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const [formData, setFormData] = useState<CampaignFormData>({
     name: '',
     type: (typeParam?.toUpperCase() as 'WHATSAPP' | 'EMAIL' | 'SMS') || 'WHATSAPP',
@@ -32,6 +33,10 @@ export default function NewCampaignPage() {
     scheduledAt: '',
     sendNow: true
   })
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Mock recipient counts
   const recipientCounts = {
@@ -282,7 +287,7 @@ export default function NewCampaignPage() {
                         value={formData.scheduledAt}
                         onChange={(e) => handleInputChange('scheduledAt', e.target.value)}
                         className="max-w-xs"
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={isMounted ? new Date().toISOString().slice(0, 16) : ''}
                         required={!formData.sendNow}
                       />
                     </div>

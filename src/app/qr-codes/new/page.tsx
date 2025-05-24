@@ -20,8 +20,8 @@ export default function NewQRCodePage() {
 
     setIsGenerating(true)
     try {
-      // Generate a temporary ID for demo purposes
-      const tempId = Math.random().toString(36).substr(2, 9)
+      // Generate a temporary ID for demo purposes (client-side only)
+      const tempId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
       const url = generateRegistrationURL(tempId)
       setRegistrationURL(url)
       
