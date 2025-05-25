@@ -1,48 +1,71 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { QrCode, ArrowLeft, Download } from "lucide-react"
+import { QrCode, ArrowLeft, Download, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { generateQRCodeDataURL, generateRegistrationURL } from "@/lib/qr-code"
+import Image from "next/image"
 
 export default function NewQRCodePage() {
+  const router = useRouter()
+  const businessId = 'demo-business-id' // Hardcoded for demo
   const [name, setName] = useState('')
-  const [qrCodeDataURL, setQrCodeDataURL] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [registrationURL, setRegistrationURL] = useState('')
+  const [qrCodeData, setQrCodeData] = useState<any>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleGenerateQR = async () => {
-    if (!name.trim()) return
+  const handleCreateQR = async () => {
+    if (!name.trim()) {
+      setError('Please enter a name for the QR code')
+      return
+    }
 
-    setIsGenerating(true)
+    setIsCreating(true)
+    setError(null)
+    
     try {
-      // Generate a temporary ID for demo purposes (client-side only)
-      const tempId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-      const url = generateRegistrationURL(tempId)
-      setRegistrationURL(url)
-      
-      const qrDataURL = await generateQRCodeDataURL(url)
-      setQrCodeDataURL(qrDataURL)
+      const response = await fetch('/api/qr-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          businessId
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create QR code')
+      }
+
+      const data = await response.json()
+      setQrCodeData(data)
     } catch (error) {
-      console.error('Error generating QR code:', error)
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
-      setIsGenerating(false)
+      setIsCreating(false)
     }
   }
 
   const handleDownload = () => {
-    if (!qrCodeDataURL) return
+    if (!qrCodeData?.qrCode?.qrCodeData) return
 
     const link = document.createElement('a')
-    link.href = qrCodeDataURL
+    link.href = qrCodeData.qrCode.qrCodeData
     link.download = `${name.replace(/\s+/g, '_')}_qr_code.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  const handleSaveAndContinue = () => {
+    router.push('/qr-codes')
   }
 
   return (
@@ -87,19 +110,26 @@ export default function NewQRCodePage() {
             </div>
 
             <Button 
-              onClick={handleGenerateQR}
-              disabled={!name.trim() || isGenerating}
+              onClick={handleCreateQR}
+              disabled={!name.trim() || isCreating}
               className="w-full"
             >
-              {isGenerating ? (
-                <>Generating...</>
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating QR Code...
+                </>
               ) : (
                 <>
                   <QrCode className="mr-2 h-4 w-4" />
-                  Generate QR Code
+                  Create QR Code
                 </>
               )}
             </Button>
+
+            {error && (
+              <p className="text-sm text-red-600 mt-2">{error}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -112,31 +142,39 @@ export default function NewQRCodePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {qrCodeDataURL ? (
+            {qrCodeData ? (
               <div className="text-center space-y-4">
                 <div className="inline-block p-4 bg-white rounded-lg shadow-sm border">
-                  <img 
-                    src={qrCodeDataURL} 
+                  <Image 
+                    src={qrCodeData.qrCode.qrCodeData} 
                     alt="Generated QR Code"
+                    width={192}
+                    height={192}
                     className="w-48 h-48 mx-auto"
                   />
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900">{name}</h3>
                   <p className="text-sm text-gray-500 break-all mt-1">
-                    {registrationURL}
+                    {qrCodeData.registrationUrl}
                   </p>
                 </div>
-                <Button onClick={handleDownload} className="w-full">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download QR Code
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleDownload} variant="outline" className="flex-1">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download QR Code
+                  </Button>
+                  <Button onClick={handleSaveAndContinue} className="flex-1">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save & Continue
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="text-center py-12">
                 <QrCode className="mx-auto h-16 w-16 text-gray-400 mb-4" />
                 <p className="text-gray-500">
-                  Enter a name and click "Generate QR Code" to create your QR code
+                  Enter a name and click "Create QR Code" to generate your QR code
                 </p>
               </div>
             )}
@@ -144,7 +182,7 @@ export default function NewQRCodePage() {
         </Card>
       </div>
 
-      {qrCodeDataURL && (
+      {qrCodeData && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>How to Use Your QR Code</CardTitle>

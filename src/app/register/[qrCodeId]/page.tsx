@@ -50,28 +50,32 @@ export default function CustomerRegistrationPage({
     setIsSubmitting(true)
 
     try {
-      // TODO: Implement API call to save customer data
-      // For now, simulate a successful registration
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          businessId: 'demo-business-id', // Hardcoded for demo
+          qrCodeId: params.qrCodeId
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to register')
+      }
+
       setIsSuccess(true)
       
-      // Redirect to success page after a delay
+      // Redirect to thank you page after 3 seconds
       setTimeout(() => {
-        setIsSuccess(false)
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          birthday: '',
-          whatsappOptIn: false,
-          smsOptIn: false,
-          emailOptIn: false
-        })
+        router.push('/')
       }, 3000)
     } catch (error) {
-      console.error('Registration failed:', error)
+      console.error('Registration error:', error)
+      alert(error instanceof Error ? error.message : 'Registration failed. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

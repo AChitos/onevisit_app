@@ -1,10 +1,118 @@
+'use client';
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Building2, Mail, Phone, MapPin, Save, User, Bell, Shield } from "lucide-react"
+import { Building2, Mail, Phone, MapPin, Save, User, Bell, Shield, Loader2 } from "lucide-react"
+
+interface BusinessData {
+  id: string
+  name: string
+  description?: string
+  email?: string
+  phone?: string
+  address?: string
+  website?: string
+  logo?: string
+}
 
 export default function SettingsPage() {
+  const businessId = 'demo-business-id' // Hardcoded for demo
+  const [business, setBusiness] = useState<BusinessData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState<BusinessData>({
+    id: '',
+    name: '',
+    description: '',
+    email: '',
+    phone: '',
+    address: '',
+    website: '',
+    logo: ''
+  })
+
+  useEffect(() => {
+    async function fetchBusinessData() {
+      try {
+        const response = await fetch(`/api/business/settings?businessId=${businessId}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch business data')
+        }
+        const data = await response.json()
+        setBusiness(data.business)
+        setFormData(data.business)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBusinessData()
+  }, [businessId])
+
+  const handleInputChange = (field: keyof BusinessData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/business/settings?businessId=${businessId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save business data')
+      }
+
+      const data = await response.json()
+      setBusiness(data.business)
+      alert('Business information saved successfully!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+      alert('Failed to save business information. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Loading settings...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !business) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -32,24 +140,22 @@ export default function SettingsPage() {
                 <Label htmlFor="businessName">Business Name</Label>
                 <Input
                   id="businessName"
-                  defaultValue="The Coffee Corner"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
                   className="mt-2"
                 />
               </div>
               
               <div>
-                <Label htmlFor="businessType">Business Type</Label>
-                <select
-                  id="businessType"
-                  className="mt-2 w-full h-10 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  defaultValue="cafe"
-                >
-                  <option value="cafe">Cafe</option>
-                  <option value="bar">Bar</option>
-                  <option value="restaurant">Restaurant</option>
-                  <option value="pub">Pub</option>
-                  <option value="other">Other</option>
-                </select>
+                <Label htmlFor="businessWebsite">Website</Label>
+                <Input
+                  id="businessWebsite"
+                  type="url"
+                  value={formData.website || ''}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  placeholder="https://yourwebsite.com"
+                  className="mt-2"
+                />
               </div>
             </div>
 
@@ -57,7 +163,9 @@ export default function SettingsPage() {
               <Label htmlFor="businessDescription">Business Description</Label>
               <textarea
                 id="businessDescription"
-                defaultValue="A cozy neighborhood coffee shop serving artisanal coffee and fresh pastries."
+                value={formData.description || ''}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Describe your business..."
                 className="mt-2 w-full min-h-[80px] p-3 border border-input rounded-md bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
@@ -68,7 +176,8 @@ export default function SettingsPage() {
                 <Input
                   id="businessEmail"
                   type="email"
-                  defaultValue="info@coffecorner.com"
+                  value={formData.email || ''}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
                   className="mt-2"
                 />
               </div>
@@ -78,7 +187,8 @@ export default function SettingsPage() {
                 <Input
                   id="businessPhone"
                   type="tel"
-                  defaultValue="+1 (555) 123-4567"
+                  value={formData.phone || ''}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
                   className="mt-2"
                 />
               </div>
@@ -88,14 +198,24 @@ export default function SettingsPage() {
               <Label htmlFor="businessAddress">Business Address</Label>
               <Input
                 id="businessAddress"
-                defaultValue="123 Main Street, Downtown, City 12345"
+                value={formData.address || ''}
+                onChange={(e) => handleInputChange('address', e.target.value)}
                 className="mt-2"
               />
             </div>
 
-            <Button>
-              <Save className="mr-2 h-4 w-4" />
-              Save Business Information
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Business Information
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>

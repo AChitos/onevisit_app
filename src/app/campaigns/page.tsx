@@ -1,47 +1,24 @@
+'use client';
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MessageSquare, Plus, Send, Calendar, Users, Mail, Phone, MoreHorizontal, Edit, Copy, Trash2 } from "lucide-react"
+import { MessageSquare, Plus, Send, Calendar, Users, Mail, Phone, MoreHorizontal, Edit, Copy, Trash2, Loader2 } from "lucide-react"
 import Link from "next/link"
 
-// Mock data for demonstration
-const mockCampaigns = [
-  {
-    id: '1',
-    name: 'Happy Hour Special',
-    type: 'WHATSAPP',
-    subject: null,
-    message: '🍻 Happy Hour Alert! 50% off all drinks from 4-6 PM today. Come join us!',
-    status: 'SENT',
-    sentAt: '2024-01-20T16:00:00Z',
-    recipientCount: 25,
-    deliveredCount: 23,
-    createdAt: '2024-01-20T15:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'Weekend Brunch Promotion',
-    type: 'EMAIL',
-    subject: 'Special Weekend Brunch Menu - Book Your Table Now!',
-    message: 'Join us this weekend for our special brunch menu featuring...',
-    status: 'SCHEDULED',
-    scheduledAt: '2024-01-21T09:00:00Z',
-    recipientCount: 18,
-    deliveredCount: 0,
-    createdAt: '2024-01-19T10:00:00Z'
-  },
-  {
-    id: '3',
-    name: 'New Menu Launch',
-    type: 'SMS',
-    subject: null,
-    message: 'Exciting news! Try our new seasonal menu. 20% off your first order. Show this text at checkout.',
-    status: 'DRAFT',
-    sentAt: null,
-    recipientCount: 0,
-    deliveredCount: 0,
-    createdAt: '2024-01-18T14:20:00Z'
-  }
-]
+interface Campaign {
+  id: string
+  name: string
+  type: 'WHATSAPP' | 'EMAIL' | 'SMS'
+  subject?: string
+  message: string
+  status: 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'SENT' | 'FAILED'
+  sentAt?: string
+  scheduledAt?: string
+  recipientCount: number
+  deliveredCount: number
+  createdAt: string
+}
 
 const getCampaignTypeIcon = (type: string) => {
   switch (type) {
@@ -74,10 +51,60 @@ const getStatusBadge = (status: string) => {
 }
 
 export default function CampaignsPage() {
-  const totalCampaigns = mockCampaigns.length
-  const sentCampaigns = mockCampaigns.filter(c => c.status === 'SENT').length
-  const scheduledCampaigns = mockCampaigns.filter(c => c.status === 'SCHEDULED').length
-  const totalRecipients = mockCampaigns.reduce((sum, c) => sum + c.recipientCount, 0)
+  const businessId = 'demo-business-id' // Hardcoded for demo
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchCampaigns() {
+      try {
+        const response = await fetch(`/api/campaigns?businessId=${businessId}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch campaigns')
+        }
+        const data = await response.json()
+        setCampaigns(data.campaigns || [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCampaigns()
+  }, [businessId])
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Loading campaigns...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const totalCampaigns = campaigns.length
+  const sentCampaigns = campaigns.filter((c: Campaign) => c.status === 'SENT').length
+  const scheduledCampaigns = campaigns.filter((c: Campaign) => c.status === 'SCHEDULED').length
+  const totalRecipients = campaigns.reduce((sum: number, c: Campaign) => sum + c.recipientCount, 0)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -211,7 +238,7 @@ export default function CampaignsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {mockCampaigns.length === 0 ? (
+          {campaigns.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
@@ -227,7 +254,7 @@ export default function CampaignsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {mockCampaigns.map((campaign) => (
+              {campaigns.map((campaign: Campaign) => (
                 <div key={campaign.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex-1">
@@ -255,8 +282,8 @@ export default function CampaignsPage() {
                         {campaign.sentAt && (
                           <span>Sent: {new Date(campaign.sentAt).toLocaleDateString()}</span>
                         )}
-                        {campaign.status === 'SCHEDULED' && (
-                          <span>Scheduled: {new Date(campaign.scheduledAt!).toLocaleDateString()}</span>
+                        {campaign.status === 'SCHEDULED' && campaign.scheduledAt && (
+                          <span>Scheduled: {new Date(campaign.scheduledAt).toLocaleDateString()}</span>
                         )}
                         <span>Created: {new Date(campaign.createdAt).toLocaleDateString()}</span>
                       </div>

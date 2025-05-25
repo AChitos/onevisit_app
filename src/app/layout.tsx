@@ -16,7 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OneVisit - Marketing Platform for Cafes & Bars",
   description: "WhatsApp, SMS, and Email marketing platform for local cafes and bars",
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

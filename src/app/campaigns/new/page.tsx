@@ -57,12 +57,39 @@ export default function NewCampaignPage() {
     setIsSubmitting(true)
 
     try {
-      // TODO: Implement API call to create campaign
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const campaignData = {
+        businessId: 'demo-business-id', // Hardcoded for demo
+        name: formData.name,
+        type: formData.type,
+        subject: formData.type === 'EMAIL' ? formData.subject : undefined,
+        message: formData.message,
+        scheduledAt: formData.sendNow ? undefined : formData.scheduledAt,
+        status: formData.sendNow ? 'SENDING' : 'SCHEDULED'
+      }
+
+      const response = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(campaignData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create campaign')
+      }
+
+      const result = await response.json()
+      
+      // If sending now, simulate a delay for sending process
+      if (formData.sendNow) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
       
       router.push('/campaigns')
     } catch (error) {
       console.error('Campaign creation failed:', error)
+      alert('Failed to create campaign. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

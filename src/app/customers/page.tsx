@@ -1,57 +1,87 @@
+'use client';
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Users, Search, Filter, Download, UserPlus, Mail, MessageSquare, Phone, Calendar } from "lucide-react"
+import { Users, Search, Filter, Download, UserPlus, Mail, MessageSquare, Phone, Calendar, Loader2 } from "lucide-react"
 import Link from "next/link"
 
-// Mock data for demonstration
-const mockCustomers = [
-  {
-    id: '1',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah.johnson@email.com',
-    phone: '+1 (555) 123-4567',
-    whatsappOptIn: true,
-    smsOptIn: true,
-    emailOptIn: true,
-    registeredAt: '2024-01-15',
-    lastContact: '2024-01-20',
-    birthday: '1990-06-15'
-  },
-  {
-    id: '2',
-    firstName: 'Mike',
-    lastName: 'Chen',
-    email: 'mike.chen@email.com',
-    phone: '+1 (555) 987-6543',
-    whatsappOptIn: true,
-    smsOptIn: false,
-    emailOptIn: true,
-    registeredAt: '2024-01-10',
-    lastContact: null,
-    birthday: null
-  },
-  {
-    id: '3',
-    firstName: 'Emma',
-    lastName: 'Davis',
-    email: 'emma.davis@email.com',
-    phone: '+1 (555) 456-7890',
-    whatsappOptIn: false,
-    smsOptIn: true,
-    emailOptIn: true,
-    registeredAt: '2024-01-08',
-    lastContact: '2024-01-18',
-    birthday: '1985-12-03'
-  }
-]
+interface Customer {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  whatsappOptIn: boolean
+  smsOptIn: boolean
+  emailOptIn: boolean
+  registeredAt: string
+  qrCodeId?: string
+}
 
 export default function CustomersPage() {
-  const totalCustomers = mockCustomers.length
-  const whatsappOptIns = mockCustomers.filter(c => c.whatsappOptIn).length
-  const emailOptIns = mockCustomers.filter(c => c.emailOptIn).length
-  const smsOptIns = mockCustomers.filter(c => c.smsOptIn).length
+  const businessId = 'demo-business-id' // Hardcoded for demo
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    async function fetchCustomers() {
+      try {
+        const response = await fetch(`/api/customers?businessId=${businessId}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch customers')
+        }
+        const data = await response.json()
+        setCustomers(data.customers || [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCustomers()
+  }, [businessId])
+
+  const filteredCustomers = customers.filter(customer =>
+    `${customer.firstName} ${customer.lastName} ${customer.email}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  )
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Loading customers...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const totalCustomers = customers.length
+  const whatsappOptIns = customers.filter((c: Customer) => c.whatsappOptIn).length
+  const emailOptIns = customers.filter((c: Customer) => c.emailOptIn).length
+  const smsOptIns = customers.filter((c: Customer) => c.smsOptIn).length
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -135,14 +165,15 @@ export default function CustomersPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search customers by name, email, or phone..."
-                  className="pl-10"
-                />
-              </div>
+            <div className="flex-1">            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search customers by name, email, or phone..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
             </div>
             <Button variant="outline">
               <Filter className="mr-2 h-4 w-4" />
@@ -161,23 +192,30 @@ export default function CustomersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {mockCustomers.length === 0 ? (
+          {filteredCustomers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No customers yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {customers.length === 0 ? "No customers yet" : "No customers found"}
+              </h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Start collecting customer information by creating QR codes and sharing them in your venue.
+                {customers.length === 0 
+                  ? "Start collecting customer information by creating QR codes and sharing them in your venue."
+                  : "Try adjusting your search terms or filters."
+                }
               </p>
-              <Link href="/qr-codes/new">
-                <Button>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Create QR Code
-                </Button>
-              </Link>
+              {customers.length === 0 && (
+                <Link href="/qr-codes/new">
+                  <Button>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Create QR Code
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {mockCustomers.map((customer) => (
+              {filteredCustomers.map((customer: Customer) => (
                 <div key={customer.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex-1">
@@ -219,23 +257,12 @@ export default function CustomersPage() {
                             {customer.phone}
                           </div>
                         )}
-                        {customer.birthday && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            Birthday: {new Date(customer.birthday).toLocaleDateString()}
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-500">
                       <div>
                         Registered: {new Date(customer.registeredAt).toLocaleDateString()}
                       </div>
-                      {customer.lastContact && (
-                        <div className="sm:border-l sm:border-gray-300 sm:pl-2">
-                          Last contact: {new Date(customer.lastContact).toLocaleDateString()}
-                        </div>
-                      )}
                       <Button variant="outline" size="sm" className="sm:ml-2">
                         View Details
                       </Button>
