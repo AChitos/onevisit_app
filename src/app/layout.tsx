@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OneVisit - Marketing Platform for Cafes & Bars",
   description: "WhatsApp, SMS, and Email marketing platform for local cafes and bars",
+  viewport: "width=device-width, initial-scale=1",
 };
 
 export default function RootLayout({
@@ -29,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Navigation />
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-gray-50 p-4 md:p-8">
           {children}
         </main>
       </body>
