@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // Get customer counts
     const totalCustomers = await prisma.customer.count({
       where: { businessId }
-    })
+    })ssd
 
     const newCustomersThisMonth = await prisma.customer.count({
       where: {
